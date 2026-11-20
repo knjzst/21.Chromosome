@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LowDarts Setup</title>
+<style>
+  body { margin:0; background:#111; color:#eee; font-family:system-ui,sans-serif; padding:16px; }
+  button { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:15px; }
+  .cam { margin-bottom:28px; }
+  .wrap { position:relative; display:inline-block; max-width:100%; }
+  .wrap img { max-width:100%; display:block; cursor:crosshair; }
+  .dot { position:absolute; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:#f0f; border:2px solid #fff; pointer-events:none; }
+  .hint { color:#fc4; margin:6px 0; }
+  a { color:#6cf; }
+</style>
+</head>
+<body>
+<h2>Kamera-Kalibrierung</h2>
+<p>Pro Kamera die <b>äußere Draht-Kante des Doppelrings</b> an diesen 4 Stellen anklicken – in dieser Reihenfolge.
+Ein paar Pixel Ungenauigkeit sind egal: danach richtet sich die Kalibrierung automatisch sub-pixel-genau am Board aus.
+Anschließend zeigt das Bild die erkannten Ringe (gelb) zur Kontrolle.</p>
+<p><a href="/">← zurück zum Spiel</a></p>
+<div id="cams"></div>
+<script>
+(async()=>{
+  const info=await (await fetch('/api/cameras')).json();
+  const root=document.getElementById('cams');
+  for(let i=0;i<info.count;i++){
+    const d=document.createElement('div');d.className='cam';
+    d.innerHTML=`<h3>Kamera ${i+1}</h3><div class="hint"></div><div class="wrap"><img src="/cam/${i}_overlay.jpg?${Date.now()}"></div><br>
+      <button class="reset">Neu anklicken</button> <button class="refresh">Bild aktualisieren</button> <span class="res"></span>`;
+    root.appendChild(d);
+    const img=d.querySelector('img'),hint=d.querySelector('.hint'),wrap=d.querySelector('.wrap'),res=d.querySelector('.res');
+    let pts=[];
+    const upd=()=>{hint.textContent=pts.length<4?`Klick ${pts.length+1}/4: Doppelring außen bei ${info.points[pts.length]}`:'Berechne…';};
+    const clear=()=>{pts=[];wrap.querySelectorAll('.dot').forEach(e=>e.remove());upd();};
+    upd();
+    d.querySelector('.reset').onclick=()=>{clear();img.src=`/cam/${i}.jpg?${Date.now()}`;};
+    d.querySelector('.refresh').onclick=()=>{img.src=`/cam/${i}_overlay.jpg?${Date.now()}`;};
+    img.onclick=async e=>{
+      if(pts.length>=4)return;
+      const r=img.getBoundingClientRect(),sx=img.naturalWidth/r.width,sy=img.naturalHeight/r.height;
+      const x=(e.clientX-r.left)*sx,y=(e.clientY-r.top)*sy;pts.push([x,y]);
+      const dot=document.createElement('div');dot.className='dot';dot.style.left=(e.clientX-r.left)+'px';dot.style.top=(e.clientY-r.top)+'px';wrap.appendChild(dot);
+      upd();
+      if(pts.length==4){
+        const out=await (await fetch('/api/calibrate/'+i,{method:'POST',body:JSON.stringify({points:pts})})).json();
+        res.textContent=out.ok?`✔ gespeichert (Ausrichtungs-Score ${out.ecc})`:'Fehler';
+        clear();hint.textContent='Fertig – gelbe Ringe sollten genau auf dem Board liegen.';
+        img.src=`/cam/${i}_overlay.jpg?${Date.now()}`;
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>
