@@ -13,6 +13,7 @@ Tricks that cut CPU and USB load compared to "decode every frame at 30 FPS":
 """
 from __future__ import annotations
 
+import sys
 import threading
 import time
 
@@ -69,9 +70,13 @@ class Camera:
 
     def open(self):
         src = int(self.source) if str(self.source).isdigit() else self.source
-        cap = cv2.VideoCapture(src, cv2.CAP_V4L2) if isinstance(src, int) else None
+        cap = None
+        if isinstance(src, int):
+            # DirectShow on Windows honours MJPG + resolution; V4L2 on Linux
+            backend = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_V4L2
+            cap = cv2.VideoCapture(src, backend)
         if cap is None or not cap.isOpened():
-            cap = cv2.VideoCapture(src)
+            cap = cv2.VideoCapture(src)  # also URLs (phone / IP camera streams)
         if not cap.isOpened():
             raise RuntimeError(f"camera {self.source} not available")
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))

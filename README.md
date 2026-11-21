@@ -41,28 +41,41 @@ LowDarts: 10 FPS Idle                     1.0 % eines Kerns (+28 ms pro Dart)
 
 > **Ehrlicher Hinweis:** Alle Zahlen stammen aus einem synthetischen 3D-Simulator, nicht von einem echten Board. Reale Effekte (Kamera-Rauschen, Linsenverzeichnung, Schatten, Lichtring, echte Pfeilspitzen) sind noch nicht validiert – der erste Test am echten Aufbau ist der nächste Schritt.
 
-## Installation
+## Windows-Programm
+
+**Download:** Auf GitHub unter *Actions → Windows build → LowDarts-Windows* liegen nach jedem Push
+`LowDarts-Setup.exe` (Installer) und `LowDarts-portable.zip` (ohne Installation entpacken und `LowDarts.exe` starten).
+Das Programm öffnet ein eigenes Fenster (Edge WebView2, ist in Windows 10/11 enthalten). Daten, Sounds und Statistiken liegen in `%APPDATA%\LowDarts`.
+
+### Funktionen
+* **Spielmodi:** X01 (121–901, Straight/Double/Master In & Out, Legs & Sets, Max. Runden), Cricket & Tactics (Standard, Cut-Throat, ohne Punkte),
+  Around the Clock, Bob's 27, Count Up, Shanghai.
+* **Computer-Gegner:** 11 Stufen von Ø ~20 bis Ø ~120.
+* **Eingabe:** Kameras (automatisch), Klick aufs virtuelle Board oder Tastenfeld; jeden Dart per Klick korrigieren, Rückgängig.
+* **Sound & Show:** Sprecher (Windows-Stimmen, offline, deutsch/englisch), eingebaute Effekte (Airhorn bei 180, Sad Trombone beim Bust,
+  Grillenzirpen bei 0 Punkten, Fanfare beim Checkout …), **Soundboard** mit 12 Pads + eigenen Sounds (Taste `S`), Einlaufmusik pro Spieler,
+  große Animationen und Konfetti.
+* **Statistik:** Ø, First 9, Checkout-Quote, 60+/100+/140+/180, Bestes Finish, Match-Historie – alles lokal.
+* **Kameras:** 3 USB-Kameras **oder eine einzelne Kamera, z. B. das iPhone** (über eine Webcam-App wie Camo/Iriun oder eine Stream-URL).
+  Kalibrierung mit 4 Klicks pro Kamera im Programm.
+
+### Bedienung
+| Taste | Aktion |
+|---|---|
+| `Enter` | nächster Spieler |
+| `Backspace` | letzten Dart rückgängig |
+| `S` | Soundboard öffnen/schließen |
+| `1`–`0`, `Q`, `W` … | Soundboard-Pads (wenn offen) |
+
+## Aus dem Quellcode starten
 
 ```bash
-sudo apt install python3-opencv python3-numpy   # oder: pip install -r requirements.txt
-git clone … && cd 21.Chromosome
+pip install -r requirements-desktop.txt
+python -m lowdarts                # Desktop-Fenster
+python -m lowdarts serve          # nur Server, Bedienung im Browser (http://127.0.0.1:8080)
+python -m lowdarts demo           # simuliertes Board mit 3 Kameras, wirft selbst
+python -m pytest                  # Tests
 ```
-
-### Ohne Hardware ausprobieren
-```bash
-python -m lowdarts demo          # öffne http://127.0.0.1:8080 – simuliertes Board wirft selbst
-```
-
-### Mit echten Kameras
-```bash
-v4l2-ctl --list-devices            # Kamera-Indizes herausfinden
-python -m lowdarts run --cams 0 2 4
-```
-1. Im Browser `http://<gerät>:8080/setup` öffnen und pro Kamera die 4 Punkte am **äußeren Doppelring** anklicken (20|1, 6|10, 3|19, 11|14). Die gelben Ringe sollten danach exakt auf dem Board liegen.
-2. `http://<gerät>:8080` → Spiel starten. Darts werden automatisch gezählt; nach dem Ziehen der Pfeile wechselt der Spieler automatisch.
-3. Falsch erkannt? Auf den Dart tippen und korrigieren. Pfeil daneben (außerhalb des Boards)? „+ Wurf“ → `MISS`.
-
-Optionen: `--res 640x480 --fps 10 --scale 4 --port 8080 --calib calibration.json`
 
 ## Praxis-Hinweise
 * **Licht** bleibt wichtig: schattenfreier LED-Ring, keine flackernden Lampen.
@@ -79,13 +92,18 @@ lowdarts/
   detector.py     Pfeilspitzen-Erkennung pro Kamera
   fusion.py       Kovarianz-gewichtete Fusion + Ausreißer
   engine.py       Ereignis-Schleife (Bewegung → Ruhe → Analyse / Pfeile gezogen)
-  game.py         X01 (301/501/…, Double-In/Out, Bust, Checkout-Tipps, Undo)
-  server.py       Web-UI nur mit Standardbibliothek (SSE)
+  game.py         Wurf-Eingabe & Checkout-Tipps
+  modes.py        Spielmodi (X01, Cricket, Training, Party)
+  bot.py          Computer-Gegner
+  server.py       App-Server (Spiel, Bots, Einstellungen, Sounds, Kameras)
+  desktop.py      Windows-Fenster (pywebview)
+  static/         Oberfläche, Sound-Engine & Soundboard
   sim.py          3D-Simulator für Tests & Demo
 tests/            pytest
 ```
 
 ## Grenzen / Ideen
-* Nur X01 (Cricket & Co. wären reine Spiellogik in `game.py`).
+* Noch nicht dabei: Killer, Gotcha, Bermuda, 121, Random Checkout, Segment-Training; Ausbullen; Heatmaps.
+* Eigener iPhone-Stream per QR-Code (ohne Zusatz-App) ist geplant.
 * Linsenverzeichnung wird nicht korrigiert – bei Weitwinkel > 100° ggf. ergänzen.
-* Kein Abgleich der Pfeil-Zählung mit Bounce-outs (manuell per „+ Wurf“).
+* Kein Abgleich der Pfeil-Zählung mit Bounce-outs (manuell per Tastenfeld oder Board-Klick).

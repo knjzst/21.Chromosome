@@ -2,96 +2,30 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LowDarts</title>
-<style>
-  :root { --bg:#111; --fg:#eee; --mut:#888; --acc:#e33; --ok:#2a2; --card:#1c1c1c; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; }
-  header { display:flex; gap:8px; align-items:center; padding:10px 16px; background:#000; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0 auto 0 0; }
-  button, select, input { background:#2a2a2a; color:var(--fg); border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:15px; }
-  button:active { background:#444; }
-  main { display:grid; grid-template-columns: 1fr minmax(260px, 380px); gap:16px; padding:16px; }
-  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
-  .players { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:12px; }
-  .p { background:var(--card); border-radius:10px; padding:14px; border:2px solid transparent; }
-  .p.cur { border-color:var(--acc); }
-  .p .n { color:var(--mut); font-size:15px; }
-  .p .s { font-size:64px; font-weight:700; line-height:1.1; font-variant-numeric: tabular-nums; }
-  .p .m { color:var(--mut); font-size:13px; }
-  .turn { display:flex; gap:10px; margin-top:16px; }
-  .d { flex:1; background:var(--card); border-radius:10px; padding:14px; text-align:center; font-size:30px; font-weight:600; cursor:pointer; min-height:70px; }
-  .d.empty { color:#444; }
-  .info { margin-top:12px; font-size:20px; min-height:28px; }
-  .bust { color:var(--acc); font-weight:700; }
-  .win { color:var(--ok); font-weight:700; }
-  .co { color:#fc4; }
-  .status { color:var(--mut); font-size:13px; margin-top:8px; }
-  svg { width:100%; height:auto; background:var(--card); border-radius:10px; }
-  dialog { background:#222; color:var(--fg); border:1px solid #555; border-radius:10px; }
-  dialog label { display:block; margin:8px 0; }
-</style>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header>
-  <h1>🎯 LowDarts</h1>
-  <button onclick="newGame()">Neues Spiel</button>
-  <button onclick="post('next')">Nächster ▶</button>
-  <button onclick="post('undo')">↶ Rückgängig</button>
-  <button onclick="manual()">+ Wurf</button>
-  <a href="/setup"><button>Kalibrieren</button></a>
-</header>
-<main>
-  <section>
-    <div class="players" id="players"></div>
-    <div class="turn" id="turn"></div>
-    <div class="info" id="info"></div>
-    <div class="status" id="status"></div>
-  </section>
-  <section><svg id="board" viewBox="-180 -180 360 360"></svg></section>
-</main>
-<dialog id="dlg">
-  <form method="dialog" id="ng">
-    <label>Spieler (Komma-getrennt)<br><input name="players" value="Spieler 1, Spieler 2" size="28"></label>
-    <label>Modus <select name="start"><option>501</option><option>301</option><option>701</option><option>170</option></select></label>
-    <label><input type="checkbox" name="double_out" checked> Double Out</label>
-    <label><input type="checkbox" name="double_in"> Double In</label>
-    <button value="ok">Start</button> <button value="cancel">Abbrechen</button>
-  </form>
-</dialog>
-<script>
-const SECT=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
-function drawBoard(){
-  const s=document.getElementById('board'); let h='';
-  const ring=(r1,r2,a0,a1,c)=>{const p=(r,a)=>[r*Math.cos(a),-r*Math.sin(a)];
-    const [x1,y1]=p(r2,a0),[x2,y2]=p(r2,a1),[x3,y3]=p(r1,a1),[x4,y4]=p(r1,a0);
-    return `<path d="M${x1} ${y1}A${r2} ${r2} 0 0 0 ${x2} ${y2}L${x3} ${y3}A${r1} ${r1} 0 0 1 ${x4} ${y4}Z" fill="${c}"/>`;};
-  for(let i=0;i<20;i++){const c=(90-i*18)*Math.PI/180,a0=c-Math.PI/20,a1=c+Math.PI/20,e=i%2==0;
-    h+=ring(15.9,99,a0,a1,e?'#222':'#e8dcb0')+ring(99,107,a0,a1,e?'#c33':'#393')+ring(107,162,a0,a1,e?'#222':'#e8dcb0')+ring(162,170,a0,a1,e?'#c33':'#393');
-    h+=`<text x="${178*Math.cos(c)}" y="${-178*Math.sin(c)+3}" font-size="9" fill="#aaa" text-anchor="middle">${SECT[i]}</text>`;}
-  h+='<circle r="15.9" fill="#393"/><circle r="6.35" fill="#c33"/><g id="hits"></g>';
-  s.innerHTML=h;
-}
-drawBoard();
-async function post(a,b={}){const r=await fetch('/api/'+a,{method:'POST',body:JSON.stringify(b)});if(!r.ok)alert((await r.json()).error||'Fehler');}
-function manual(){const l=prompt('Wurf eingeben (z.B. T20, D16, S5, 25, BULL, MISS)');if(l)post('throw',{label:l});}
-function correct(i){const l=prompt('Korrektur für Dart '+(i+1)+' (z.B. T20, D16, MISS)');if(l)post('correct',{index:i,label:l});}
-function newGame(){const d=document.getElementById('dlg');d.showModal();d.onclose=()=>{if(d.returnValue!=='ok')return;
-  const f=document.getElementById('ng');post('new_game',{players:f.players.value.split(','),start:+f.start.value,double_out:f.double_out.checked,double_in:f.double_in.checked});};}
-function render(s){
-  document.getElementById('players').innerHTML=s.players.map((p,i)=>
-    `<div class="p ${i==s.current?'cur':''}"><div class="n">${esc(p.name)}</div><div class="s">${p.score}</div><div class="m">Ø ${p.avg} · Legs ${p.legs}</div></div>`).join('');
-  let t='';for(let i=0;i<3;i++){const d=s.turn[i];t+=d?`<div class="d" onclick="correct(${i})">${d.label}</div>`:'<div class="d empty">–</div>';}
-  document.getElementById('turn').innerHTML=t;
-  let info=s.winner?`<span class="win">🏆 ${esc(s.winner)} gewinnt!</span>`:s.bust?'<span class="bust">BUST</span>':`Aufnahme: ${s.turn_total}`;
-  if(s.checkout&&!s.winner&&!s.bust)info+=` · <span class="co">Checkout: ${s.checkout}</span>`;
-  document.getElementById('info').innerHTML=info;
-  document.getElementById('status').textContent=`Erkennung: ${s.engine} · ${s.status||''}`;
-  document.getElementById('hits').innerHTML=s.turn.map((d,i)=>`<circle cx="${d.x}" cy="${-d.y}" r="4" fill="#0cf" stroke="#000"/><text x="${d.x+6}" y="${-d.y-6}" font-size="10" fill="#0cf">${i+1}</text>`).join('');
-}
-function esc(x){return String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-const es=new EventSource('/events');es.onmessage=e=>render(JSON.parse(e.data));
-</script>
+<div id="app">
+  <nav class="top">
+    <div class="logo">
+      <svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11" fill="#1b1d22" stroke="#f2b13c" stroke-width="1.5"/><circle r="7" fill="none" stroke="#d23a31" stroke-width="2"/><circle r="2.5" fill="#f2b13c"/></svg>
+      Low<b>Darts</b>
+    </div>
+    <a href="#home" data-nav="home">Spielen</a>
+    <a href="#match" data-nav="match">Match</a>
+    <a href="#stats" data-nav="stats">Statistik</a>
+    <a href="#settings" data-nav="settings">Einstellungen</a>
+    <span class="spacer"></span>
+    <span class="pill" id="engine-pill">Manuelle Eingabe</span>
+    <button class="btn ghost" id="sb-toggle" title="Soundboard (S)">🔊 Soundboard</button>
+  </nav>
+  <main id="main"></main>
+</div>
+<div class="drawer hidden" id="soundboard"></div>
+<canvas id="confetti"></canvas>
+<script src="/static/audio.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>
