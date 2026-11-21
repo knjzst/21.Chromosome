@@ -1,0 +1,66 @@
+# 21.Chromosome – zentrale Konfiguration
+# Alle Schwellen bewusst als Config (Autodarts-Prinzip 11): Tuning pro Aufbau/Licht
+# ohne Code-Änderung. Zur Laufzeit per PATCH /api/config/dynamic änderbar.
+
+[cameras]
+# Kamera-Indizes der drei USB-Kameras.
+# Linux (V4L2): ls /dev/video* – ungerade Indizes sind meist Metadaten-Devices.
+# Windows (MSMF): fortlaufend 0,1,2 in der Reihenfolge der Geräteerkennung.
+indices = [0, 2, 4]
+# Capture-Backend: "auto" wählt je Plattform (Linux: v4l2, Windows: msmf -> dshow).
+# Bei Problemen unter Windows explizit "dshow" versuchen.
+backend = "auto"
+width = 1280
+height = 720
+fps = 30
+fourcc = "MJPG"          # MJPEG vom UVC-Treiber: spart USB-Bandbreite und CPU (Prinzip 7)
+
+[processing]
+# Bewegungsanalyse auf verkleinertem Graustufenbild (Prinzip 1: Gating billig halten)
+motion_scale = 0.25      # 1280x720 -> 320x180
+crop_size = 192          # Kantenlänge des Analyse-Crops um die Einschlagstelle (Prinzip 2)
+
+[motion]
+# Zustandsautomat: IDLE -> MOTION -> SETTLED(Infer) bzw. -> TAKEOUT
+diff_threshold = 18              # Graustufen-Differenzschwelle (0-255)
+min_change_pixels = 60           # ab so vielen geänderten Pixeln (im verkleinerten Bild) gilt "Bewegung"
+min_contour_area = 40            # Mindestfläche einer Kontur im verkleinerten Bild
+min_dart_frames = 3              # so viele ruhige Frames in Folge, bis ein Dart als gelandet gilt
+max_dart_pixels = 2500           # mehr geänderte Pixel als das => Hand/Körper, kein Dart
+hand_pixels = 4000               # ab hier sicher Hand im Bild -> Takeout-Kandidat
+takeout_min_hand_frames = 5      # so lange muss die Hand sichtbar sein, bis Takeout startet
+takeout_wait_frames = 15         # ruhige Frames nach Handabzug, bis Takeout als beendet gilt
+settle_timeout_frames = 90       # Sicherheitsnetz: nach so vielen Frames zurück zu IDLE
+
+[detect]
+# Klassische Spitzen-Erkennung auf dem Crop (Prinzip 3: Geometrie zuerst, NN später optional)
+canny_low = 40
+canny_high = 120
+hough_threshold = 25             # Hough-Schwelle für den Dartschaft
+min_line_length = 30
+max_line_gap = 8
+dart_confidence = 0.5            # Mindestkonfidenz, sonst wird der Wurf verworfen
+
+[fusion]
+# Multi-Kamera-Fusion in Board-Koordinaten (Prinzip 5)
+max_residual_mm = 6.0            # Kamera-Lesung weiter als das vom Median entfernt => Ausreißer
+min_cameras = 2                  # so viele gültige Lesungen braucht ein gewerteter Wurf
+
+[board]
+# Offizielle Maße Steeldart (mm, Radien ab Board-Mitte)
+bull_inner_r = 6.35
+bull_outer_r = 15.9
+triple_inner_r = 99.0
+triple_outer_r = 107.0
+double_inner_r = 162.0
+double_outer_r = 170.0
+
+[api]
+host = "0.0.0.0"
+port = 3180
+stream_fps = 10                  # MJPEG-Streams gedrosselt, um den Pi nicht zu belasten
+
+[dump]
+# Debug-Dumps bei Fehlwürfen (Prinzip 9): Config + Frames + Bewegungsverlauf als Archiv
+dir = "dumps"
+history_frames = 20
