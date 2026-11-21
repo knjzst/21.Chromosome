@@ -150,7 +150,7 @@ class Engine:
     def stats(self) -> dict[str, Any]:
         return {
             "cameras": [
-                {"index": s.state.index, "connected": s.state.connected,
+                {"no": i, "index": s.state.index, "connected": s.state.connected,
                  "calibrated": i in self.calib.cams,
                  "motion_state": self.detectors[i].state.value}
                 for i, s in enumerate(self.cameras.sources)

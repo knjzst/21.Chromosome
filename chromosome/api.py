@@ -26,6 +26,54 @@ from .config import Config
 from .dump import create_dump
 from .engine import Engine, ThrowEvent
 
+_INDEX_HTML = """<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>21.Chromosome</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; background:#111; color:#eee; margin:2rem; }
+  h1 { font-size:1.4rem; } h2 { font-size:1.05rem; margin-top:1.6rem; }
+  table { border-collapse:collapse; } td,th { padding:.35rem .8rem; border:1px solid #444; }
+  .ok { color:#6c6; } .bad { color:#e66; }
+  #turn { font-size:2.2rem; letter-spacing:.3rem; min-height:2.6rem; }
+  #events { font-family:monospace; font-size:.85rem; white-space:pre-wrap;
+            background:#1a1a1a; padding:.8rem; max-height:14rem; overflow-y:auto; }
+  a { color:#8cf; }
+</style></head><body>
+<h1>21.Chromosome &ndash; Dart-Engine</h1>
+<div id="turn">&ndash;</div>
+<h2>Kameras</h2>
+<table id="cams"><tr><th>Index</th><th>Verbunden</th><th>Kalibriert</th><th>Motion</th><th>Bild</th></tr></table>
+<h2>Ereignisse</h2>
+<div id="events"></div>
+<p><a href="/api/state/stats">stats</a> &middot; <a href="/api/config/dynamic">config</a></p>
+<script>
+async function refresh() {
+  const r = await fetch('/api/state/stats'); const s = await r.json();
+  document.getElementById('turn').textContent = s.turn.length ? s.turn.join('  ') : '\\u2013';
+  const t = document.getElementById('cams');
+  while (t.rows.length > 1) t.deleteRow(1);
+  for (const c of s.cameras) {
+    const row = t.insertRow();
+    row.insertCell().textContent = c.index;
+    row.insertCell().innerHTML = c.connected ? '<span class="ok">ja</span>' : '<span class="bad">nein</span>';
+    row.insertCell().innerHTML = c.calibrated ? '<span class="ok">ja</span>' : '<span class="bad">nein</span>';
+    row.insertCell().textContent = c.motion_state;
+    row.insertCell().innerHTML = '<a href="/api/streams/cams/' + c.no + '">Stream</a>';
+  }
+}
+refresh(); setInterval(refresh, 2000);
+const log = document.getElementById('events');
+new EventSource('/api/events').onmessage = (e) => {
+  const d = JSON.parse(e.data);
+  const line = new Date(d.ts * 1000).toLocaleTimeString() + '  ' + d.kind +
+               (d.score ? '  ' + d.score.label : '');
+  log.textContent = line + '\\n' + log.textContent;
+};
+</script></body></html>
+"""
+
 
 def build_app(engine: Engine, cfg: Config) -> Flask:
     app = Flask("chromosome21")
@@ -45,6 +93,10 @@ def build_app(engine: Engine, cfg: Config) -> Flask:
                 pass
 
     engine.on_event(fanout)
+
+    @app.get("/")
+    def index():
+        return Response(_INDEX_HTML, mimetype="text/html")
 
     @app.get("/api/state/stats")
     def stats():
