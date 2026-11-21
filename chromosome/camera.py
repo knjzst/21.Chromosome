@@ -3,9 +3,14 @@
 Autodarts-Prinzip 7: MJPEG vom Treiber dekodieren statt RAW über USB zu ziehen –
 drei 720p-Kameras an einem Pi 4 gehen sonst an der USB-Bandbreite kaputt.
 Jeder Thread hält nur den jeweils letzten Frame vor (kein Queue-Stau).
+
+Plattformen: Linux nutzt V4L2, Windows Media Foundation (MSMF – dasselbe
+Backend wie Autodarts Desktop) mit DirectShow als Fallback; überschreibbar
+über [cameras] backend in config.toml ("auto" | "v4l2" | "msmf" | "dshow" | "any").
 """
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -14,6 +19,25 @@ import cv2
 import numpy as np
 
 from .config import Config
+
+_BACKENDS = {
+    "v4l2": cv2.CAP_V4L2,
+    "msmf": cv2.CAP_MSMF,
+    "dshow": cv2.CAP_DSHOW,
+    "any": cv2.CAP_ANY,
+}
+
+
+def _backend_order(cfg: Config) -> list[int]:
+    """Capture-Backends in Versuchsreihenfolge, abhängig von Plattform und Config."""
+    choice = str(cfg.get("cameras.backend", "auto")).lower()
+    if choice in _BACKENDS:
+        return [_BACKENDS[choice]]
+    if sys.platform.startswith("win"):
+        return [cv2.CAP_MSMF, cv2.CAP_DSHOW, cv2.CAP_ANY]
+    if sys.platform.startswith("linux"):
+        return [cv2.CAP_V4L2, cv2.CAP_ANY]
+    return [cv2.CAP_ANY]
 
 
 @dataclass
@@ -54,13 +78,17 @@ class CameraSource:
 
     def _open(self) -> cv2.VideoCapture:
         cam = self._cfg.section("cameras")
-        cap = cv2.VideoCapture(self.state.index, cv2.CAP_V4L2)
-        fourcc = cv2.VideoWriter_fourcc(*cam.get("fourcc", "MJPG"))
-        cap.set(cv2.CAP_PROP_FOURCC, fourcc)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, cam.get("width", 1280))
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cam.get("height", 720))
-        cap.set(cv2.CAP_PROP_FPS, cam.get("fps", 30))
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # keinen alten Frame nachziehen
+        cap = cv2.VideoCapture()
+        for backend in _backend_order(self._cfg):
+            if cap.open(self.state.index, backend):
+                break
+        if cap.isOpened():
+            fourcc = cv2.VideoWriter_fourcc(*cam.get("fourcc", "MJPG"))
+            cap.set(cv2.CAP_PROP_FOURCC, fourcc)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, cam.get("width", 1280))
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cam.get("height", 720))
+            cap.set(cv2.CAP_PROP_FPS, cam.get("fps", 30))
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # keinen alten Frame nachziehen
         return cap
 
     def _run(self) -> None:

@@ -1,6 +1,6 @@
 # 21.Chromosome
 
-Dart-Erkennungs-Engine für Low-End-Hardware (Zielplattform: **Raspberry Pi 4**, 3× USB-Webcam).
+Dart-Erkennungs-Engine für Low-End-Hardware (Zielplattform: **Raspberry Pi 4**, 3× USB-Webcam; läuft auch unter **Windows**).
 Architektur abgeleitet aus einer statischen Analyse von Autodarts Desktop 2.1.1
 (siehe [docs/Autodarts-Analyse.md](docs/Autodarts-Analyse.md)) – **nur Prinzipien übernommen, kein fremder Code**.
 
@@ -60,6 +60,35 @@ werden; Trainingsdaten liefern die Debug-Dumps.
    curl -X POST http://<pi>:3180/api/config/calibration/auto/0 \
         -H "Content-Type: application/json" -d '{"p20": [640, 120]}'
    ```
+
+## Installation (Windows 10/11)
+
+### Voraussetzungen
+- Python ≥ 3.11 (python.org, "Add to PATH" aktivieren)
+- 3 USB-Webcams (UVC/MJPEG)
+
+### Schritte
+1. Repo klonen und Abhängigkeiten installieren:
+   ```powershell
+   git clone https://github.com/knjzst/21.Chromosome.git
+   cd 21.Chromosome
+   python -m venv .venv
+   .venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+2. Kamera-Indizes: Unter Windows zählen die Kameras fortlaufend 0, 1, 2
+   (Media Foundation). In `config.toml` eintragen:
+   ```toml
+   [cameras]
+   indices = [0, 1, 2]
+   ```
+   Liefert eine Kamera kein Bild, in `config.toml` `backend = "dshow"` setzen.
+3. Engine starten:
+   ```powershell
+   python -m chromosome
+   ```
+4. Kalibrierung wie unten beim Pi (Standbild ansehen, 20er-Mitte posten) –
+   die API ist identisch, `http://localhost:3180/...`.
 
 ### Verifikation
 - `curl http://<pi>:3180/api/state/stats` → alle Kameras `connected: true`, `calibrated: true`

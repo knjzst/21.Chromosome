@@ -3,8 +3,13 @@
 # ohne Code-Änderung. Zur Laufzeit per PATCH /api/config/dynamic änderbar.
 
 [cameras]
-# V4L2-Indizes der drei USB-Kameras (ls /dev/video*; ungerade Indizes sind meist Metadaten-Devices)
+# Kamera-Indizes der drei USB-Kameras.
+# Linux (V4L2): ls /dev/video* – ungerade Indizes sind meist Metadaten-Devices.
+# Windows (MSMF): fortlaufend 0,1,2 in der Reihenfolge der Geräteerkennung.
 indices = [0, 2, 4]
+# Capture-Backend: "auto" wählt je Plattform (Linux: v4l2, Windows: msmf -> dshow).
+# Bei Problemen unter Windows explizit "dshow" versuchen.
+backend = "auto"
 width = 1280
 height = 720
 fps = 30
