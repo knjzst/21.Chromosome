@@ -1,0 +1,54 @@
+name: Windows build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q
+
+  windows:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements-desktop.txt pyinstaller pytest
+      - name: Tests on Windows
+        run: python -m pytest -q
+      - name: Build app folder
+        run: >
+          pyinstaller --noconfirm --windowed --name LowDarts
+          --add-data "lowdarts/static;lowdarts/static"
+          --collect-all webview
+          run_lowdarts.py
+      - name: Smoke test (CLI starts)
+        shell: pwsh
+        run: |
+          python -m lowdarts evaluate --throws 30
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" packaging\lowdarts.iss
+      - name: Zip portable version
+        shell: pwsh
+        run: Compress-Archive -Path dist\LowDarts\* -DestinationPath dist\LowDarts-portable.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LowDarts-Windows
+          path: |
+            dist/LowDarts-Setup.exe
+            dist/LowDarts-portable.zip

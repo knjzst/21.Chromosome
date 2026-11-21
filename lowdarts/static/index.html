@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LowDarts</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <nav class="top">
+    <div class="logo">
+      <svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11" fill="#1b1d22" stroke="#f2b13c" stroke-width="1.5"/><circle r="7" fill="none" stroke="#d23a31" stroke-width="2"/><circle r="2.5" fill="#f2b13c"/></svg>
+      Low<b>Darts</b>
+    </div>
+    <a href="#home" data-nav="home">Spielen</a>
+    <a href="#match" data-nav="match">Match</a>
+    <a href="#stats" data-nav="stats">Statistik</a>
+    <a href="#settings" data-nav="settings">Einstellungen</a>
+    <span class="spacer"></span>
+    <span class="pill" id="engine-pill">Manuelle Eingabe</span>
+    <button class="btn ghost" id="sb-toggle" title="Soundboard (S)">🔊 Soundboard</button>
+  </nav>
+  <main id="main"></main>
+</div>
+<div class="drawer hidden" id="soundboard"></div>
+<canvas id="confetti"></canvas>
+<script src="/static/audio.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
